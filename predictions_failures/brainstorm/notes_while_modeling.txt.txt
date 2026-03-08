@@ -1,0 +1,17 @@
+learnings:
+
+setpoints are determined control points for monitoring flow. the goal is to minimize the squared difference between
+    actual and setpoint values. 
+
+sensor reset occurs: NEED TO ENGINEER THIS FEATURE!
+    most likely will create an indicator feature (binary)
+    another approach: impute with median/average value because in theory data should be continuous at that val
+
+different scales for measurement in stage 1
+    will need to min-max or standardize for better predictions most likely
+    because these are measurements at different points post-combiner, these measurements most likely have high
+    correlation
+        potential things to explore: 
+            principal component analysis
+            multivariate regression
+            train-local statistics as features (to capture flow uniformity)

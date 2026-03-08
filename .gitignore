@@ -1,0 +1,6 @@
+learni/
+*.csv
+.DS_Store
+__pycache__/
+
+eoq_cost_c/*.txt
