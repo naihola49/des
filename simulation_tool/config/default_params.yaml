@@ -1,0 +1,27 @@
+# Default parameters for Factory Physics Simulation Tool
+
+system:
+  num_stations: 4
+  conwip_level: 10
+  simulation_duration: 1000.0
+  warmup_period: 100.0
+
+variability:
+  processing_cv: 1.0
+  raw_material_cv: 1.0
+  demand_cv: 1.0
+  arrival_rate: 0.5
+
+stations:
+  - name: "Station 1"
+    mean_processing_time: 1.0
+    cv_processing: 1.0
+  - name: "Station 2"
+    mean_processing_time: 1.0
+    cv_processing: 1.0
+  - name: "Station 3"
+    mean_processing_time: 1.0
+    cv_processing: 1.0
+  - name: "Station 4"
+    mean_processing_time: 1.0
+    cv_processing: 1.0

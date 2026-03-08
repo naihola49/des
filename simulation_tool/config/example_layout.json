@@ -1,0 +1,50 @@
+{
+  "nodes": [
+    {
+      "id": "source_1",
+      "type": "source",
+      "label": "Raw material",
+      "params": { "distribution": "exponential", "mean": 2.0 },
+      "x": 50,
+      "y": 100
+    },
+    {
+      "id": "station_1",
+      "type": "station",
+      "label": "Assembly",
+      "params": { "distribution": "gamma", "mean": 5.0, "cv": 0.6 },
+      "x": 200,
+      "y": 100
+    },
+    {
+      "id": "buffer_1",
+      "type": "buffer",
+      "label": "WIP buffer",
+      "params": { "capacity": 10 },
+      "x": 350,
+      "y": 100
+    },
+    {
+      "id": "station_2",
+      "type": "station",
+      "label": "Test",
+      "params": { "distribution": "gamma", "mean": 3.0, "cv": 0.5 },
+      "x": 500,
+      "y": 100
+    },
+    {
+      "id": "sink_1",
+      "type": "sink",
+      "label": "Finished good",
+      "params": {},
+      "x": 650,
+      "y": 100
+    }
+  ],
+  "edges": [
+    { "from": "source_1", "to": "station_1" },
+    { "from": "station_1", "to": "buffer_1" },
+    { "from": "buffer_1", "to": "station_2" },
+    { "from": "station_2", "to": "sink_1" }
+  ]
+}

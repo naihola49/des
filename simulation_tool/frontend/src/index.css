@@ -1,0 +1,30 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f5f5f5;
+}
+#root {
+  height: 100vh;
+}
+
+.react-flow__node-source { --node-color: #4CAF50; }
+.react-flow__node-station { --node-color: #2196F3; }
+.react-flow__node-buffer { --node-color: #FF9800; }
+.react-flow__node-sink { --node-color: #9C27B0; }
+.react-flow__node-rework { --node-color: #E91E63; }
+
+.react-flow__node {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--node-color, #666);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.react-flow__node.selected {
+  box-shadow: 0 0 0 2px #333;
+}

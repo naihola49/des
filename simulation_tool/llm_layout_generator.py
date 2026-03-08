@@ -22,13 +22,16 @@ EXAMPLE_LAYOUT = {
         {"id": "station_1", "type": "station", "label": "Assembly", "params": {"distribution": "gamma", "mean": 5.0, "cv": 0.5}, "x": 200, "y": 100},
         {"id": "buffer_1", "type": "buffer", "label": "WIP buffer", "params": {"capacity": 10}, "x": 350, "y": 100},
         {"id": "station_2", "type": "station", "label": "Test", "params": {"distribution": "gamma", "mean": 3.0, "cv": 0.5}, "x": 500, "y": 100},
+        {"id": "rework_1", "type": "rework", "label": "Rework", "params": {"delay": 1.0}, "x": 500, "y": 220},
         {"id": "sink_1", "type": "sink", "label": "Finished good", "params": {}, "x": 650, "y": 100},
     ],
     "edges": [
         {"from": "source_1", "to": "station_1"},
         {"from": "station_1", "to": "buffer_1"},
         {"from": "buffer_1", "to": "station_2"},
-        {"from": "station_2", "to": "sink_1"},
+        {"from": "station_2", "to": "sink_1", "probability": 0.9},
+        {"from": "station_2", "to": "rework_1", "probability": 0.1},
+        {"from": "rework_1", "to": "station_1"},
     ],
 }
 
@@ -37,22 +40,23 @@ SYSTEM_PROMPT = """You are a factory layout assistant. Given a short description
 The JSON must have exactly two keys: "nodes" and "edges".
 
 **Nodes** is an array of objects. Each node has:
-- "id": unique string (e.g. "source_1", "station_1", "buffer_1", "sink_1"). Use lowercase and underscores.
-- "type": one of "source", "station", "buffer", "sink"
+- "id": unique string (e.g. "source_1", "station_1", "rework_1", "sink_1"). Use lowercase and underscores.
+- "type": one of "source", "station", "buffer", "sink", "rework"
   - source: where jobs/parts arrive (e.g. raw material). No incoming edges.
   - station: a processing step (e.g. assembly, machining, test).
   - buffer: a queue between steps (optional capacity in params).
   - sink: where finished jobs leave. No outgoing edges.
-- "label": short human-readable name (e.g. "Assembly", "WIP buffer")
-- "params": object. For source/station use {"distribution": "exponential" or "gamma", "mean": number, "cv": number for gamma}. For buffer use {"capacity": number} or {}. For sink use {}.
+  - rework: receives failed/rework jobs from stations (via probabilistic edges) and feeds them back into a station. Use when the user mentions rework, defects, or "send back". params: {} or {"delay": number} for mean delay before sending back.
+- "label": short human-readable name (e.g. "Assembly", "Rework")
+- "params": object. For source/station use {"distribution": "exponential" or "gamma", "mean": number, "cv": number for gamma}. For buffer use {"capacity": number} or {}. For sink use {}. For rework use {} or {"delay": number}.
 - "x", "y": numbers for position (e.g. 50, 100, 200, ... spacing by ~150).
 
 **Edges** is an array of objects. Each edge has:
 - "from": id of the node that sends jobs
 - "to": id of the node that receives jobs
-- optional "probability": number between 0 and 1 if there is probabilistic routing
+- optional "probability": number between 0 and 1. When a node has multiple outgoing edges (e.g. from a station: 0.9 to next step, 0.1 to rework), include probability on each so they sum to 1.
 
-Flow: sources have no incoming edges; sinks have no outgoing edges. Jobs flow along edges (e.g. source -> station -> buffer -> station -> sink). Use the exact node ids in "from" and "to".
+Flow: sources have no incoming edges; sinks have no outgoing edges. Rework nodes have incoming edges from stations (with probability) and outgoing edges back to a station. Use the exact node ids in "from" and "to".
 
 Output only the JSON object, no markdown code fence and no other text."""
 

@@ -1,6 +1,22 @@
+# Dependencies and build
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+simulation_tool/frontend/node_modules/
+simulation_tool/frontend/dist/
+
+# Env and secrets (never commit)
+.env
+.env.local
+.env.*.local
+
+# User-saved layout (default download name from the app)
+factory_layout.json
+
+# Data / local
 learni/
 *.csv
-.DS_Store
-__pycache__/
 
-eoq_cost_c/*.txt
+# OS
+.DS_Store
