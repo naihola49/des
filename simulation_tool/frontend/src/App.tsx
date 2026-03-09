@@ -35,8 +35,14 @@ function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
-  const [generateStatus, setGenerateStatus] = useState<'idle' | 'loading' | 'error'>( 'idle')
+  const [generateStatus, setGenerateStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [generateError, setGenerateError] = useState<string | null>(null)
+  const [simulationStatus, setSimulationStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [simulationError, setSimulationError] = useState<string | null>(null)
+  const [simulationResult, setSimulationResult] = useState<{
+    results: Record<string, number>
+    explanation: string | null
+  } | null>(null)
 
   const onConnect = useCallback(
     (conn: Connection) => setEdges((eds) => addEdge(conn, eds)),
@@ -168,6 +174,49 @@ function App() {
     [handleLoad]
   )
 
+    const handleRunSimulation = useCallback(
+    async (nTrials: number) => {
+      const layout = flowToLayout(nodes, edges)
+      if (!layout.nodes.length) {
+        setSimulationError('Add at least one node to the layout')
+        setSimulationStatus('error')
+        return
+      }
+      const hasSource = layout.nodes.some((n) => n.type === 'source')
+      if (!hasSource) {
+        setSimulationError('Layout must have at least one source')
+        setSimulationStatus('error')
+        return
+      }
+      setSimulationStatus('loading')
+      setSimulationError(null)
+      setSimulationResult(null)
+      try {
+        const res = await fetch('/api/run-simulation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            layout,
+            n_trials: nTrials,
+            duration: 100,
+            explain: true,
+          }),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ detail: res.statusText }))
+          throw new Error(err.detail || 'Simulation failed')
+        }
+        const data = await res.json()
+        setSimulationResult({ results: data.results, explanation: data.explanation ?? null })
+        setSimulationStatus('idle')
+      } catch (e) {
+        setSimulationError(e instanceof Error ? e.message : 'Simulation failed')
+        setSimulationStatus('error')
+      }
+    },
+    [nodes, edges]
+  )
+
   const handleAddNode = useCallback(
     (nodeType: 'source' | 'station' | 'buffer' | 'sink' | 'rework', position?: { x: number; y: number }) => {
       const id = `${nodeType}_${Date.now()}`
@@ -221,6 +270,10 @@ function App() {
             onGenerate={handleGenerate}
             generateStatus={generateStatus}
             generateError={generateError}
+            onRunSimulation={handleRunSimulation}
+            simulationStatus={simulationStatus}
+            simulationError={simulationError}
+            simulationResult={simulationResult}
           />
         </Panel>
       </ReactFlow>
