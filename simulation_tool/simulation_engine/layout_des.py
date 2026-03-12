@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from .distributions import sample_time
+from .distributions import sample_time, sample_manual_weibull_time
 
 try:
     from layout.model import FactoryLayout, NodeType
@@ -47,6 +47,7 @@ class LayoutSimulator:
     SOURCE_EMIT = "source_emit"
     PROCESSING_END = "processing_end"
     REWORK_RELEASE = "rework_release"
+    MANUAL_BREAK_END = "manual_break_end"
 
     def __init__(self, layout: FactoryLayout):
         self.layout = layout
@@ -58,13 +59,22 @@ class LayoutSimulator:
         self._completed: List[float] = []  # cycle times
         self._node_queues: Dict[str, List[int]] = {}
         self._station_current: Dict[str, Optional[int]] = {}
+        self._manual_current: Dict[str, Optional[int]] = {}
         self._rework_current: Dict[str, Optional[int]] = {}
+        # For manual nodes, track time since the last break (in simulation hours).
+        # For now, "last break" is initialized at simulation start -> future, change to actual estimate of breaks during sim time period
+        self._manual_last_break_time: Dict[str, float] = {}
+        self._manual_on_break: Dict[str, bool] = {}
         self._source_next_emit: Dict[str, float] = {}
 
         for n in layout.nodes:
             self._node_queues[n.id] = []
             if n.type == NodeType.STATION:
                 self._station_current[n.id] = None
+            elif n.type == NodeType.MANUAL:
+                self._manual_current[n.id] = None
+                self._manual_last_break_time[n.id] = 0.0
+                self._manual_on_break[n.id] = False
             elif n.type == NodeType.REWORK:
                 self._rework_current[n.id] = None
 
@@ -87,8 +97,14 @@ class LayoutSimulator:
             self._node_queues[k].clear()
         for k in self._station_current:
             self._station_current[k] = None
+        for k in self._manual_current:
+            self._manual_current[k] = None
         for k in self._rework_current:
             self._rework_current[k] = None
+        for k in self._manual_last_break_time:
+            self._manual_last_break_time[k] = 0.0
+        for k in self._manual_on_break:
+            self._manual_on_break[k] = False
         self._source_next_emit.clear()
         self._heap.clear()
 
@@ -112,6 +128,8 @@ class LayoutSimulator:
                 self._do_processing_end(ev.node_id, ev.job_id)
             elif ev.kind == self.REWORK_RELEASE:
                 self._do_rework_release(ev.node_id, ev.job_id)
+            elif ev.kind == self.MANUAL_BREAK_END:
+                self._do_manual_break_end(ev.node_id)
 
         return self._compute_results(duration, warmup)
 
@@ -132,14 +150,46 @@ class LayoutSimulator:
         self._source_next_emit[source_id] = next_t
 
     def _do_processing_end(self, station_id: str, job_id: int) -> None:
-        self._station_current[station_id] = None
+        # A processing_end can correspond to either a regular station or a manual node.
+        if station_id in self._station_current:
+            self._station_current[station_id] = None
+        if station_id in self._manual_current:
+            self._manual_current[station_id] = None
         next_id = self.layout.sample_next_node(station_id, self.rng)
         if next_id:
             self._push_job(job_id, next_id)
+        node = self.layout.node_by_id(station_id)
+        # For manual nodes, optionally start a break instead of immediately taking
+        # the next job, based on hours since the last break ended.
+        if node and node.type == NodeType.MANUAL:
+            params = node.params or {}
+            interval = float(params.get("break_interval_hours", 0.0) or 0.0)
+            duration = float(params.get("break_duration", 0.0) or 0.0)
+            if (
+                interval > 0.0
+                and duration > 0.0
+                and not self._manual_on_break.get(station_id, False)
+            ):
+                hours_since_last_break = max(
+                    0.0, self.clock - self._manual_last_break_time.get(station_id, 0.0)
+                )
+                if hours_since_last_break >= interval:
+                    # Start a break: operator is unavailable until MANUAL_BREAK_END.
+                    self._manual_on_break[station_id] = True
+                    end_t = self.clock + duration
+                    heapq.heappush(
+                        self._heap,
+                        _Event(end_t, self.MANUAL_BREAK_END, station_id, 0),
+                    )
+                    return
+
         q = self._node_queues[station_id]
         if q:
             next_job = q.pop(0)
-            self._start_processing(station_id, next_job)
+            if node and node.type == NodeType.MANUAL:
+                self._start_manual_processing(station_id, next_job)
+            else:
+                self._start_processing(station_id, next_job)
         else:
             self._try_pull_from_upstream(station_id)
 
@@ -166,6 +216,14 @@ class LayoutSimulator:
             if self._station_current[node_id] is None:
                 self._try_start_one_at_station(node_id)
             return
+        if node.type == NodeType.MANUAL:
+            self._node_queues[node_id].append(job_id)
+            if (
+                self._manual_current[node_id] is None
+                and not self._manual_on_break.get(node_id, False)
+            ):
+                self._try_start_one_at_manual(node_id)
+            return
         if node.type == NodeType.BUFFER:
             cap = node.params.get("capacity")
             if cap is not None and len(self._node_queues[node_id]) >= cap:
@@ -187,6 +245,16 @@ class LayoutSimulator:
         job_id = q.pop(0)
         self._start_processing(station_id, job_id)
 
+    def _try_start_one_at_manual(self, manual_id: str) -> None:
+        if self._manual_on_break.get(manual_id, False):
+            return
+        q = self._node_queues[manual_id]
+        if not q:
+            self._try_pull_from_upstream(manual_id)
+            return
+        job_id = q.pop(0)
+        self._start_manual_processing(manual_id, job_id)
+
     def _start_processing(self, station_id: str, job_id: int) -> None:
         node = self.layout.node_by_id(station_id)
         if not node or node.type != NodeType.STATION:
@@ -198,6 +266,27 @@ class LayoutSimulator:
             self._heap,
             _Event(end_t, self.PROCESSING_END, station_id, job_id),
         )
+
+    def _start_manual_processing(self, manual_id: str, job_id: int) -> None:
+        node = self.layout.node_by_id(manual_id)
+        if not node or node.type != NodeType.MANUAL:
+            return
+        self._manual_current[manual_id] = job_id
+        last_break = self._manual_last_break_time.get(manual_id, 0.0)
+        hours_since_last_break = max(0.0, self.clock - last_break)
+        pt = sample_manual_weibull_time(node.params, hours_since_last_break, self.rng)
+        end_t = self.clock + pt
+        heapq.heappush(
+            self._heap,
+            _Event(end_t, self.PROCESSING_END, manual_id, job_id),
+        )
+
+    def _do_manual_break_end(self, manual_id: str) -> None:
+        # End of a manual operator's break; update last_break_time and try to
+        # start processing the next waiting job (or pull from upstream).
+        self._manual_on_break[manual_id] = False
+        self._manual_last_break_time[manual_id] = self.clock
+        self._try_start_one_at_manual(manual_id)
 
     def _try_pull_from_upstream(self, node_id: str) -> None:
         for e in self.layout.edges_to(node_id):

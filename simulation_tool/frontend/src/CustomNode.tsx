@@ -14,6 +14,7 @@ function CustomNode({ data }: NodeProps<Node<NodeData>>) {
 }
 
 export const SourceNode = memo(CustomNode)
+export const ManualNode = memo(CustomNode)
 export const StationNode = memo(CustomNode)
 export const BufferNode = memo(CustomNode)
 export const SinkNode = memo(CustomNode)

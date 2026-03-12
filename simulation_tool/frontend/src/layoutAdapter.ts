@@ -3,7 +3,7 @@ import type { FactoryLayout, LayoutNode, LayoutEdge } from './types'
 
 export type NodeData = {
   label: string
-  nodeType: 'source' | 'station' | 'buffer' | 'sink' | 'rework'
+  nodeType: 'source' | 'manual' | 'station' | 'buffer' | 'sink' | 'rework'
   params: Record<string, unknown>
 }
 

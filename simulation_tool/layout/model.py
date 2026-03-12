@@ -25,6 +25,7 @@ class NodeType(str, Enum):
     """
     SOURCE = "source"
     STATION = "station"
+    MANUAL = "manual"
     BUFFER = "buffer"
     SINK = "sink"
     REWORK = "rework"
@@ -39,11 +40,19 @@ class Node:
     - type:     NodeType — determines behavior in the DES.
     - label:    Human-readable name (e.g. "Assembly").
     - params:   Type-specific settings. Examples:
-                  source  → {"distribution": "exponential", "mean": 2.0}
-                  station → {"distribution": "gamma", "mean": 5.0, "cv": 0.5}
-                  buffer  → {"capacity": 10}  or {} for infinite
-                  sink    → {}
-                  rework  → {} or {"delay": 1.0} for mean delay before sending back
+      source  → {"distribution": "exponential", "mean": 2.0}
+      station → {"distribution": "gamma", "mean": 5.0, "cv": 0.5}
+      manual  → {
+                   "distribution": "weibull",
+                   "shape": 1.5,
+                   "base_scale": 1.0,
+                   "fatigue_rate": 0.1,
+                   "break_interval_hours": 2.0,
+                   "break_duration": 0.25,
+                 }
+      buffer  → {"capacity": 10}  or {} for infinite
+      sink    → {}
+      rework  → {} or {"delay": 1.0} for mean delay before sending back
     - x, y:     Position on the canvas (for the drag-and-drop UI). The DES
                 ignores these; they're only so the layout looks right when
                 you reopen the file.

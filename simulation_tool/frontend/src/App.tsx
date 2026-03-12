@@ -17,10 +17,11 @@ import { layoutToFlow, flowToLayout } from './layoutAdapter'
 import type { FactoryLayout } from './types'
 import { EditPanel } from './EditPanel'
 import { Toolbar } from './Toolbar'
-import { SourceNode, StationNode, BufferNode, SinkNode, ReworkNode } from './CustomNode'
+import { SourceNode, ManualNode, StationNode, BufferNode, SinkNode, ReworkNode } from './CustomNode'
 
 const nodeTypes: NodeTypes = {
   source: SourceNode,
+  manual: ManualNode,
   station: StationNode,
   buffer: BufferNode,
   sink: SinkNode,
@@ -218,10 +219,21 @@ function App() {
   )
 
   const handleAddNode = useCallback(
-    (nodeType: 'source' | 'station' | 'buffer' | 'sink' | 'rework', position?: { x: number; y: number }) => {
+    (
+      nodeType: 'source' | 'manual' | 'station' | 'buffer' | 'sink' | 'rework',
+      position?: { x: number; y: number }
+    ) => {
       const id = `${nodeType}_${Date.now()}`
       const defaults: Record<string, Record<string, unknown>> = {
         source: { distribution: 'exponential', mean: 2 },
+        manual: {
+          distribution: 'weibull',
+          shape: 1.5,
+          base_scale: 1.0,
+          fatigue_rate: 0.1,
+          break_interval_hours: 2.0,
+          break_duration: 0.25,
+        },
         station: { distribution: 'gamma', mean: 5, cv: 0.5 },
         buffer: { capacity: 10 },
         sink: {},

@@ -17,6 +17,6 @@ factory_layout.json
 # Data / local
 learni/
 *.csv
-
-# OS
 .DS_Store
+__pycache__/
+

@@ -95,10 +95,19 @@ export function EditPanel({
             style={{ width: '100%', padding: 6 }}
           />
         </div>
-        {(node.data?.nodeType === 'source' || node.data?.nodeType === 'station' || node.data?.nodeType === 'buffer' || node.data?.nodeType === 'rework') && (
+        {(node.data?.nodeType === 'source' ||
+          node.data?.nodeType === 'manual' ||
+          node.data?.nodeType === 'station' ||
+          node.data?.nodeType === 'buffer' ||
+          node.data?.nodeType === 'rework') && (
           <div>
             <label style={{ display: 'block', fontSize: 12, marginBottom: 4 }}>
-              Params (JSON){node.data?.nodeType === 'rework' ? ' — e.g. {"delay": 1} for mean delay before sending back' : ''}
+              Params (JSON)
+              {node.data?.nodeType === 'rework'
+                ? ' — e.g. {"delay": 1} for mean delay before sending back'
+                : node.data?.nodeType === 'manual'
+                  ? ' — Weibull + fatigue, e.g. {"distribution": "weibull", "shape": 1.5, "base_scale": 1.0, "fatigue_rate": 0.1, "break_interval_hours": 2.0, "break_duration": 0.25}'
+                  : ''}
             </label>
             <textarea
               value={paramsStr}

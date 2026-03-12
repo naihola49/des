@@ -1,7 +1,7 @@
 /** Matches the backend layout JSON (nodes + edges). */
 export interface LayoutNode {
   id: string
-  type: 'source' | 'station' | 'buffer' | 'sink' | 'rework'
+  type: 'source' | 'manual' | 'station' | 'buffer' | 'sink' | 'rework'
   label: string
   params: Record<string, unknown>
   x: number

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useReactFlow } from '@xyflow/react'
 import type { FactoryLayout } from './types'
 
-type NodeType = 'source' | 'station' | 'buffer' | 'sink' | 'rework'
+type NodeType = 'source' | 'manual' | 'station' | 'buffer' | 'sink' | 'rework'
 
 export interface SimulationResult {
   results: Record<string, number>
@@ -96,7 +96,7 @@ export function Toolbar({
     >
       <div style={{ fontWeight: 600, marginBottom: 8 }}>Factory Layout</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-        {(['source', 'station', 'buffer', 'sink', 'rework'] as const).map((type) => (
+        {(['source', 'manual', 'station', 'buffer', 'sink', 'rework'] as const).map((type) => (
           <button
             key={type}
             type="button"
